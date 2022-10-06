@@ -1,4 +1,4 @@
-#version 03 is the UART counter part!
+#(c) 2022 Martin Wendt
 .macro  push reg1
         add     -4, sp
         st.w    \reg1, 0x0[sp]

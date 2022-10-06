@@ -1,3 +1,4 @@
+#(c) 2022 Martin Wendt
 SOURCE=upload
 ASM=python3 -m bronzebeard.asm --compress -l labels.asm
 DFU=python3 -m bronzebeard.dfu 28e9:0189

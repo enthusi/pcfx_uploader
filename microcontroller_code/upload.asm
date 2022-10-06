@@ -1,3 +1,4 @@
+#(c) 2022 Martin Wendt
 include gd32vf103.asm
 
 RAM = 0x20000000

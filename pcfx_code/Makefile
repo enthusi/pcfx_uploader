@@ -1,3 +1,4 @@
+#(c) 2022 Martin Wendt
 SOURCE=loader.s
 EMU=mednafen
 
