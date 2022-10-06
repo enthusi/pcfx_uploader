@@ -2,7 +2,12 @@
 transmitting data from PC to a NEC PC-FX via microcontroller in GPL v3 licence.
 
 ## Build
-To build just type ```make``` given that you have the following tools in your path:\
+*microcontroller_code* contains the firmware in assembly for the LonganNano.\
+*pc_code* with the python script to upload data via UART connection.\
+*pcfx_code* contains the client on NEC PC-FX side in v810 assembly (`make cd` will build an CD bin/cue image) .\
+
+To build just type ```make``` in the corresponding folder, or launch the script, given that you have the following tools in your path:\
+[RV32 Assembler Bronzebeard](https://github.com/theandrew168/bronzebeard)\
 [v810 binutils](https://github.com/jbrandwood/v810-gcc)\
 [pcfx-tools](https://github.com/jbrandwood/pcfxtools)
 
