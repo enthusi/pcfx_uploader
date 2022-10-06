@@ -29,4 +29,4 @@ YouTube recording:\
 [![NEC PC-FX uploader by PriorArt](http://img.youtube.com/vi/flS91IILcIk/0.jpg)](https://www.youtube.com/watch?v=flS91IILcIk "NEC PC-FX uploader by PriorArt")
 
 ## Credits
-- code: *Martin 'enthusi' Wendt* [PriorArt(https://priorartgames.eu)
+- code: *Martin 'enthusi' Wendt* [PriorArt](https://priorartgames.eu)
