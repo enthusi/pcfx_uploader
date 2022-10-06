@@ -1,5 +1,5 @@
 # PCFX Uploader
-transmitting data from PC to a NEC PC-FX via microcontroller\
+transmitting data from PC to a NEC PC-FX via microcontroller in GPL v3 licence.
 
 ## Build
 To build just type ```make``` given that you have the following tools in your path:\
