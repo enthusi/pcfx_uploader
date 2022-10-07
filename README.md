@@ -37,5 +37,5 @@ YouTube recording:\
 - code: *Martin 'enthusi' Wendt* [PriorArt](https://priorartgames.eu)
 
 the folder *pc_code* contains the PC-FX binary `mandelbrot` from
-[PC-FX Mandelbrot](https://github.com/enthusi/pcfx_mandelbrot) which you can use to send as an example `python pysend.py mandelbrot`.\
+[PC-FX Mandelbrot](https://github.com/enthusi/pcfx_fractal) which you can use to send as an example `python pysend.py mandelbrot`.\
 See also: [PriorArt website](https://priorartgames.eu/2022/10/03/demo-mandelbrot-for-nec-pc-fx/)
