@@ -19,7 +19,15 @@ d_length = [a0,a1,a2,a3]
 
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port = '/dev/ttyUSB0'
+
+# Add override for windows-style COM ports.
+# Usage:
+#   python send.py mandelbrot COM24
+if (len(sys.argv) == 3):
+    ser.port = sys.argv[2]
+else:
+    ser.port = '/dev/ttyUSB0'
+
 ser.open()
 print(ser)
 
@@ -46,5 +54,5 @@ for fill in range(rest):
     print (ser.write(databytes))     # write a string
     ser.flush()
     
-ser.close() 
+ser.close()
 
