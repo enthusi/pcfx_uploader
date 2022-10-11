@@ -42,5 +42,5 @@ See also: [PriorArt website](https://priorartgames.eu/2022/10/03/demo-mandelbrot
 
 ## Research
 David Shadoff tested the signals from '[test data line release'](https://github.com/enthusi/pcfx_uploader/releases/tag/testing_output) based on a RP2040 setup with his logic analyzer and confirms our expectation, that the data line is indeed bidirectional. Also the OE signal change flags the used direction.\
-[Logic analyzer](https://github.com/enthusi/pcfx_uploader/blob/main/findings/PC-FX_Controller_Send_Data.png)
+[![Logic analyzer](https://github.com/enthusi/pcfx_uploader/blob/main/findings/PC-FX_Controller_Send_Data.png)]
 
