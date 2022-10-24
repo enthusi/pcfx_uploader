@@ -1,0 +1,137 @@
+;
+; By Dave Shadoff (c) 2022
+;
+;
+; Interfacing for a PC-FX communications device
+;
+; Two state machines are in use:
+; 
+; 1) Multiplexer:
+;     - Wait for the LATCH signal to go low (and high again):
+;     - based on the /OE (or W/R) line, do one of:
+;       - if OE is low, send 32 bits of data on clocked signal based on word from inbound FIFO
+;       - if OE is high, read 32 bits of data on clocked signal and push into outbound FIFO
+;     - NOTE that FIFO depth is 4 words for input and 4 words for output
+;
+; 2) Clocked input, which monitors the LATCH joypad line for
+;    high->low->high transitions, and trigger an interrupt to signal state machine #1
+; 
+;
+; Note that the word sent via data is:
+; - sent least-significant bit first to or from the PC-FX
+; - sent or received as an inverted value, as compared to internal PC-FX register value
+;
+; PIN USAGE:
+; in pin 0 = DATA IN
+; in pin 1 = CLOCK
+; out pin  = DATA OUT
+; jump pin = OE (Write when high, Read when low)
+;
+; IRQ 7 = sent by clock.pio when LATCH goes low and high again
+;
+
+.program pcfxplex
+
+.wrap_target
+outerloop:
+     wait  1 irq 7        ; when IRQ 7 fires, LATCH went low,
+                          ; and has just returned to high
+
+     jmp   PIN, FXtoPC    ; if OE is high, FX is sending data
+                          ; if OE is low, PC is sending data
+
+PCtoFX:
+     pull  noblock        ; get a value from the queue - blocking
+     mov   x, osr
+
+                          ; curr state: latch = high; clk has not yet changed (it's high)
+
+     out   PINS, 1        ; output first bit ASAP during/after latch period
+     wait  0 pin 1        ; clk negedge (including just after latch end)
+     set   y, 30          ; loop 31 times (32 minus the bit we already sent)
+
+outputlp:
+     wait  1 pin 1        ; clk posedge
+     out   PINS, 1        ; output next bit
+     wait  0 pin 1        ; clk negedge (including just after latch end)
+     jmp   y--, outputlp
+
+     wait  1 pin 1        ; clk posedge
+     set   PINS, 1        ; output a "1" value here (floating value)
+
+     jmp   outerloop
+
+FXtoPC:
+     set   x, 0
+     mov   isr, x         ; clean counters
+
+     wait  0 pin 1        ; wait for first clock transition (to low) after latch flip
+     in    PINS, 1        ; input first bit
+     set   y, 30          ; loop 31 times (32 minus the bit we just read)
+
+inputlp:
+     wait  1 pin 1        ; clock posedge
+     wait  0 pin 1        ; clk negedge; sample data at midpoint of the cycle
+     in    PINS, 1        ; input bits
+     jmp   y--, inputlp   ; until 32 bits
+
+     push                 ; send full word to FIFO
+
+.wrap
+;     jmp   outerloop
+
+
+% c-sdk {
+static inline void pcfxplex_program_init(PIO pio, uint sm, uint offset, uint inpin, uint outpin, uint jmppin) {
+    pio_sm_config c = pcfxplex_program_get_default_config(offset);
+
+    // Connect these GPIOs to this PIO block
+    pio_gpio_init(pio, inpin);
+    pio_gpio_init(pio, inpin+1);
+
+    pio_gpio_init(pio, jmppin);
+
+    pio_gpio_init(pio, outpin);
+
+    // Set the IN pin to the provided `inpin` parameter.
+    sm_config_set_in_pins(&c, inpin);
+
+    // Set the JMP pin to the provided `inpin` parameter.
+    sm_config_set_jmp_pin(&c, jmppin);
+
+    // Set the pin directions to input at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, inpin, 2, false);
+
+    // Set the pin directions to input at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, jmppin, 1, false);
+
+
+    // Set the OUT pin to the provided `outpin` parameter. This is where the data is sent out
+    sm_config_set_out_pins(&c, outpin, 1);
+
+    // Set the SET pin to the provided `outpin` parameter.
+    // This is also where the data is sent out (at end of scan)
+    sm_config_set_set_pins(&c, outpin, 1);
+
+    // Set the pin directions to output at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, outpin, 1, true);
+
+    sm_config_set_in_shift(
+        &c,
+        true,  // Shift-to-right = true
+        false, // Disable autopush
+        31     // Autopush threshold = 31 (ignored)
+    );
+
+    sm_config_set_out_shift(
+        &c,
+        true,  // Shift-to-right = true
+        false, // Autopull disabled
+        31     // Autopull threshold = 31 (ignored)
+    );
+
+    // Load our configuration, and start the program from the beginning
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

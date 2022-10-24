@@ -1,0 +1,68 @@
+;
+; By Dave Shadoff (c) 2022
+;
+;
+; Interfacing for a PC-FX communications device
+;
+; Two state machines are in use:
+;
+; 1) Multiplexer:
+;     - Wait for the LATCH signal to go low (and high again):
+;     - based on the /OE (or W/R) line, do one of:
+;       - if OE is low, send 32 bits of data on clocked signal based on word from inbound FIFO
+;       - if OE is high, read 32 bits of data on clocked signal and push into outbound FIFO
+;     - NOTE that FIFO depth is 4 words for input and 4 words for output
+;
+; 2) Clocked input, which monitors the LATCH joypad line for
+;    high->low->high transitions, and trigger an interrupt to signal state machine #1
+;
+;
+; This file (clock.pio) implements State Machine #2
+; -------------------------------------------------
+;
+
+.program clock
+
+; Sample bits using an external clock (falling edge), and push groups of bits into the RX FIFO.
+; - IN pin 0 is the latch pin
+;
+; This program samples data with each rising clock edge
+;  
+; Note that Autopush is enabled
+;
+
+.wrap_target
+clklp:
+    wait  0 pin 0        ; Wait for falling edge of LATCH
+    wait  1 pin 0        ; Wait for rising edge of LATCH (latch completion)
+    irq   7              ; Signal other state machine
+;    in    pins, 1        ; send data via FIFO (data is ignored, but timing is important)
+.wrap
+
+% c-sdk {
+static inline void clock_program_init(PIO pio, uint sm, uint offset, uint inpin) {
+    pio_sm_config c = clock_program_get_default_config(offset);
+
+    // Set the IN base pin to the provided `pin` parameter. This is the data
+    // pin, and the next-numbered GPIO is used as the clock pin.
+    sm_config_set_in_pins(&c, inpin);
+
+    // Set the pin directions to input at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, inpin, 1, false);
+
+    // Connect these GPIOs to this PIO block
+    pio_gpio_init(pio, inpin);
+    gpio_pull_up(inpin);
+
+    sm_config_set_in_shift(
+        &c,
+        false, // Shift-to-right = false (i.e. shift to left)
+        true,  // Autopush enabled
+        1      // Autopush threshold = 1
+    );
+
+    // Load our configuration, and start the program from the beginning
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
