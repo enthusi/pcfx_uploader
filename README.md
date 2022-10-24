@@ -12,7 +12,7 @@ To build just type ```make``` in the corresponding folder, or launch the script,
 [v810 binutils](https://github.com/jbrandwood/v810-gcc)\
 [pcfx-tools](https://github.com/jbrandwood/pcfxtools)
 
-The RP2040 device is based on pico-sdk version 1.4.0.  To build, execute the command within 'build_xiao.sh', then 'cd build', and 'make'
+The RP2040 device is based on pico-sdk version 1.4.0.  To build, execute the command within 'build_xiao.sh', then 'cd build', and 'make'\
 [pico-sdk](https://github.com/raspberrypi/pico-sdk)
 
 ## Summary
