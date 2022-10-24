@@ -13,6 +13,7 @@ To build just type ```make``` in the corresponding folder, or launch the script,
 [pcfx-tools](https://github.com/jbrandwood/pcfxtools)
 
 The RP2040 device is based on pico-sdk version 1.4.0.  To build, execute the command within 'build_xiao.sh', then 'cd build', and 'make'
+[pico-sdk](https://github.com/raspberrypi/pico-sdk)
 
 ## Summary
 - the code on the PCFX side expects a magic word, start-address, execution-address and data length
