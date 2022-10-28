@@ -39,16 +39,21 @@
 .equiv r_magic,  r13
 .equiv r_tmp,    r14
 #===============================
-
-.org = 0x1000
-_start = 0x1000
+.globl _start
+.org = 0x8000
+_start = 0x8000
 Start:
 
     movw 0x200000, sp
     movw 0x1000, gp
     
-    mov     2, r22 #enable cache
-    ldsr    r22, 24
+    #disable, clear, enable cache
+    #hint from Elmer: CD-DMA during boot may have invalidated it!
+    ldsr    r0,chcw
+    movea   0x8001,r0,r1
+    ldsr    r1,chcw
+    mov     2,r1
+    ldsr    r1,chcw
     
     movw loader_code, r10
     movw 0x1000, r11
