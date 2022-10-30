@@ -11,6 +11,7 @@
 #include "hardware/uart.h"
 #include "pcfxplex.pio.h"
 #include "clock.pio.h"
+#include "ws2812.pio.h"
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
@@ -24,6 +25,10 @@
 // datasheet for information on which other pins can be used.
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
+
+
+#define IS_RGBW false
+#define NUM_PIXELS 1
 
 
 #ifdef SEEED_XIAO_RP2040         // else assignments for Seed XIAO RP2040 board
@@ -40,8 +45,9 @@
 #define PICO_LED_ON     0
 #define PICO_LED_OFF    1
 
-#endif
+#define WS2812_PIN PICO_DEFAULT_WS2812_PIN
 
+#endif
 
 
 uint32_t magic_word = 0x12345678;
@@ -52,10 +58,25 @@ uint32_t num_bytes  = 0;
 uint32_t payload_data[32767];
 
 
-PIO pio;
-uint sm1, sm2;   // sm1 = plex, sm2 = clock
+PIO pio, pioled;
+uint sm1, sm2, smled;   // sm1 = plex, sm2 = clock
 
 
+//// WS2812 "Neopixel" protocol transport
+//
+static inline void put_pixel(uint32_t pixel_grb) {
+    pio_sm_put_blocking(pioled, smled, pixel_grb << 8u);
+}
+
+static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
+    return
+            ((uint32_t) (r) << 8) |
+            ((uint32_t) (g) << 16) |
+            (uint32_t) (b);
+}
+
+/// UART
+//
 uint8_t uart_get_char(void)
 {
 int inchar;
@@ -119,57 +140,96 @@ uint8_t  uart_byte = 0;
    return(uart_word);
 }
 
-void load_from_uart(int led)
+void load_from_uart(uint32_t led_color)
 {
 uint32_t inword;
 int index = 0;
 int count = 0;
 
     inword = uart_get_magic_word();
-    gpio_put(led, PICO_LED_ON); // start of transmission
+    put_pixel(led_color);
 
 //    start_addr = uart_get_word();  // this is not sent from PC
     start_addr = 0x00008000;
+
+#ifdef DEBUG_IT
     printf("Start_addr = %8.8X\n", start_addr);
+#endif
 
     num_bytes  = uart_get_word();
+#ifdef DEBUG_IT
     printf("num_bytes  = %8.8X\n", num_bytes);
+#endif
 
     count = num_bytes;
-    //count = 2;
+
     while(count > 0) {
+#ifdef DEBUG_IT
       if (count == ((count / 1000) * 1000))
          printf("count = %d\n", count);
+#endif
 
       payload_data[index++] = uart_get_word();
       count -= 4;
     }
 
-    gpio_put(led, PICO_LED_OFF);
+    sleep_ms(1000);
+    put_pixel(0x00000000);
 }
 
-void read_from_pcfx(int led)
+void read_from_pcfx(uint32_t led_color_1, uint32_t led_color_2)
 {
 uint32_t inword;
 uint32_t indata;
+int index = 0;
+int count;
+int i;
 
-    gpio_put(led, PICO_LED_ON); // start of transmission
+    put_pixel(led_color_1);
 
-    while(1) {
+    index = 0;
+
+    count = ~(pio_sm_get_blocking(pio, sm1));
+
+    if (count > 32768) count = 32768;
+
+    while(index < count) {
       inword = pio_sm_get_blocking(pio, sm1);
       indata = ~inword;
-      printf("word: %8.8X\n", indata);
+//      printf("word: %8.8X\n", indata);
+
+      payload_data[index++] = (uint8_t)(indata & 0xff);
+      payload_data[index++] = (uint8_t)((indata >> 8) & 0xff);
+      payload_data[index++] = (uint8_t)((indata >> 16) & 0xff);
+      payload_data[index++] = (uint8_t)((indata >> 24) & 0xff);
     }
+
+    sleep_ms(10);
+    put_pixel(led_color_2);
+
+    putchar_raw((int)((count >> 8) & 0xff));
+    putchar_raw((int)(count & 0xff));
+
+    for (i = 0; i < count; i+=4) {
+      putchar_raw((int)payload_data[i]);
+      putchar_raw((int)payload_data[i+1]);
+      putchar_raw((int)payload_data[i+2]);
+      putchar_raw((int)payload_data[i+3]);
+      sleep_us(500);
+    }
+
+    put_pixel(0x00000000);
 }
 
-void write_to_pcfx(int led)
+void write_to_pcfx(uint32_t led_color)
 {
 uint32_t outword;
 int index = 0;
 int count = 0;
 
-    gpio_put(led, PICO_LED_ON); // start of transmission
+    put_pixel(led_color);
     sleep_ms(1000);
+
     // note that PC-FX inverts on input, so we need to send all data as 1's complement
     outword = ~magic_word;
     pio_sm_put_blocking(pio, sm1, outword);
@@ -187,15 +247,43 @@ int count = 0;
     for (index = 0; index < count; index++) {
        outword = ~payload_data[index];
        pio_sm_put_blocking(pio, sm1, outword);
-       gpio_put(PICO_LED1, PICO_LED_ON);
     }
-    gpio_put(led, PICO_LED_OFF);
+
+//    put_pixel(0x00000000);    // There may not be enough time for 2 color transitions
+}
+
+void ws2812_countdown()
+{
+int start = 25;
+int count;
+
+    for (count = start; count >= 0; count--) {
+      put_pixel(urgb_u32(count, 0, 0));  // red
+      sleep_ms(10);
+    }
+    sleep_ms(200);
+
+    for (count = start; count >= 0; count--) {
+      put_pixel(urgb_u32(0, count, 0));  // green
+      sleep_ms(10);
+    }
+    sleep_ms(200);
+
+    for (count = start; count >= 0; count--) {
+      put_pixel(urgb_u32(0, 0, count));  // blue
+      sleep_ms(10);
+    }
+    sleep_ms(200);
+
+    put_pixel(urgb_u32(10, 10, 10));  // light
 }
 
 int main() {
 
 int a;
 uint32_t outword;
+
+int count = 0;
 
     stdio_init_all();
 
@@ -210,6 +298,9 @@ uint32_t outword;
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 ////
 
+////////////////////////
+// Turn off regular LEDs
+//
     gpio_init(PICO_LED1);
     gpio_init(PICO_LED2);
     gpio_init(PICO_LED3);
@@ -222,9 +313,24 @@ uint32_t outword;
     gpio_put(PICO_LED2, PICO_LED_OFF);
     gpio_put(PICO_LED3, PICO_LED_OFF);
 
-    // Both state machines can run on the same PIO processor
-    pio = pio0;
+////////////////////////
+// Setup NeoPixel LED
+//
+    gpio_init(PICO_DEFAULT_WS2812_POWER_PIN);
+    gpio_set_dir(PICO_DEFAULT_WS2812_POWER_PIN, GPIO_OUT);
+    gpio_put(PICO_DEFAULT_WS2812_POWER_PIN, 1);
 
+    pioled = pio1;
+    smled = 0;
+
+    uint offset = pio_add_program(pioled, &ws2812_program);
+
+    ws2812_program_init(pioled, smled, offset, WS2812_PIN, 800000, IS_RGBW);
+
+//////////////////////////////////////
+
+    // Both communications state machines run on one PIO processor (but LED on other)
+    pio = pio0;
 
     sleep_ms(200);  // allow GPIO values to settle before initating PIOs
 
@@ -252,29 +358,19 @@ uint32_t outword;
 
 // Now flash LED(s) to signify all is well
 //
-    gpio_put(PICO_LED1, PICO_LED_ON); // signal ready  (RED)
-    sleep_ms(500);
-    gpio_put(PICO_LED1, PICO_LED_OFF); // signal ready
-
-    gpio_put(PICO_LED2, PICO_LED_ON); // signal ready
-    sleep_ms(500);
-    gpio_put(PICO_LED2, PICO_LED_OFF);
-
-    gpio_put(PICO_LED3, PICO_LED_ON); // signal ready (BLUE)
-    sleep_ms(500);
-    gpio_put(PICO_LED3, PICO_LED_OFF); // signal ready
+    ws2812_countdown();
+    sleep_ms(100);
 
     // Show green while data transfer (PC->MCU) is happening
-    load_from_uart(PICO_LED2);
+    load_from_uart(urgb_u32(0,10,0));
 
-    sleep_ms(1000);
+    sleep_ms(500);
 
     // Show blue while data transfer (MCU->PC-FX) is happening
-    write_to_pcfx(PICO_LED3);
+    write_to_pcfx(urgb_u32(0,0,10));
 
     // Show red while data transfer (PC-FX->MCU) is happening
-//    printf("READY\n");
-//    read_from_pcfx(PICO_LED1);
+    read_from_pcfx(urgb_u32(10,0,0),urgb_u32(10,10,0)); // red, then yellow
 
     return 0;
 }

@@ -1,0 +1,72 @@
+#(c) 2022 Martin Wendt
+import serial
+import sys
+
+magic=[0x78,0x56,0x34,0x12] #
+testdata = open(sys.argv[1],'rb').read()
+
+length = len(testdata)
+
+words = length//4
+rest = length - words*4
+print (length,words,rest)
+ 
+a0 = length & 0xff
+a1 = (length >> 8) & 0xff
+a2 = (length >> 16) & 0xff
+a3 = (length >> 24) & 0xff
+d_length = [a0,a1,a2,a3]
+
+ser = serial.Serial()
+ser.baudrate = 115200
+
+# Add override for windows-style COM ports.
+# Usage:
+#   python send.py mandelbrot COM24
+if (len(sys.argv) == 3):
+    ser.port = sys.argv[2]
+else:
+    ser.port = '/dev/ttyUSB0'
+
+ser.open()
+print(ser)
+
+
+#send magic bytes for longan!
+databytes=bytearray(magic)
+print (ser.write(databytes))
+ser.flush()
+
+
+#transfer length in bytes
+databytes=bytearray(d_length)
+print (ser.write(databytes))     # write a string
+ser.flush()
+
+#transfer data
+databytes=bytearray(testdata)
+print (ser.write(databytes))     # write a string
+ser.flush()
+
+filler=[0x00]
+for fill in range(rest):
+    databytes=bytearray(filler)
+    print (ser.write(databytes))     # write a string
+    ser.flush()
+    
+
+f = open("bram.out", 'wb') 
+
+len_bytes = ser.read(2)      # length of data to return
+len = int.from_bytes(len_bytes, byteorder='big')
+#print(len)
+
+while len > 0:
+    mem = ser.read(1)
+    f.write(mem)
+    len = len - 1
+
+f.close()
+
+ser.close()
+
