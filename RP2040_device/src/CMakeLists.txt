@@ -12,6 +12,7 @@ add_executable(fxloader main.c)
 
 pico_generate_pio_header(fxloader ${CMAKE_CURRENT_LIST_DIR}/pcfxplex.pio )
 pico_generate_pio_header(fxloader ${CMAKE_CURRENT_LIST_DIR}/clock.pio )
+pico_generate_pio_header(fxloader ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio )
 
 target_link_libraries(fxloader 
 	pico_stdlib

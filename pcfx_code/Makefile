@@ -7,10 +7,15 @@ loader: loader.o
 	v810-objcopy  loader.linked -O binary loader
 
 sender: sender.s
-	v810-as sender.s -o sender.o
+	v810-as sender.s -a=sender.lst -o sender.o
 	v810-ld sender.o -o sender.linked
 	v810-objcopy  sender.linked -O binary sender
 	
+getbram: getbram.s
+	v810-as getbram.s -a=getbram.lst -o getbram.o
+	v810-ld getbram.o -o getbram.linked
+	v810-objcopy  getbram.linked -O binary getbram
+
 loader.o:  $(SOURCE) 
 	v810-as $(SOURCE) -o loader.o
 	
