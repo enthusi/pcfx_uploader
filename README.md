@@ -44,7 +44,7 @@ PIO assembly language is used for signal switching at high speeds, as this is it
 for the data.
 On this board, the USB port is used a virtual COM port, in order to keep the parts count to a minimum.
 
-### Demonstration
+## Demonstration
 YouTube recording of initial LonganNano variant:\
 [![NEC PC-FX uploader by PriorArt](http://img.youtube.com/vi/flS91IILcIk/0.jpg)](https://www.youtube.com/watch?v=flS91IILcIk "NEC PC-FX uploader by PriorArt")
 
