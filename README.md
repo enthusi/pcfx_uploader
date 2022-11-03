@@ -24,6 +24,7 @@ The RP2040 device is based on pico-sdk version 1.4.0.  To build, execute the com
 ## Setup
 
 ### Longan Nano
+This setup was used for initial development. The RP2040-based board will become the main supported plattform.\
 The Longan Nano is hooked up to Port2 of the PC-FX via 3V-5V level shifts (though it _should_ be 5V tolerant)\
 It uses 5 lines: GND, VCC, CLOCK, LATCH and DATA.\
 The PC-FX pulls the LATCH line to low (0 Volts) when it wants more data to come in.
