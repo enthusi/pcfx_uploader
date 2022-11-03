@@ -49,7 +49,7 @@ YouTube recording of initial LonganNano variant:\
 [![NEC PC-FX uploader by PriorArt](http://img.youtube.com/vi/flS91IILcIk/0.jpg)](https://www.youtube.com/watch?v=flS91IILcIk "NEC PC-FX uploader by PriorArt")
 
 ## Credits
-- code: *Martin 'enthusi' Wendt* [PriorArt](https://priorartgames.eu)
+- PC-FX code and Longan board design and code: *Martin 'enthusi' Wendt* [PriorArt](https://priorartgames.eu)
 - RP2040 board design and code: *David Shadoff*
 
 the folder *pc_code* contains the PC-FX binary `mandelbrot` from
