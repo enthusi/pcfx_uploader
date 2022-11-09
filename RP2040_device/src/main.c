@@ -30,6 +30,13 @@
 #define IS_RGBW false
 #define NUM_PIXELS 1
 
+#define LED_UART_TO_MCU   urgb_u32(0,10,0)   // green
+#define LED_MCU_TO_PCFX   urgb_u32(0,0,10)   // blue
+#define LED_PCFX_TO_MCU   urgb_u32(10,0,0)   // red
+#define LED_MCU_TO_UART   urgb_u32(10,10,0)  // yellow
+#define LED_EXEC          urgb_u32(3,0,3)    // purple
+#define LED_IDLE          urgb_u32(5,5,5)    // light white
+
 
 #ifdef SEEED_XIAO_RP2040         // else assignments for Seed XIAO RP2040 board
 
@@ -50,12 +57,18 @@
 #endif
 
 
-uint32_t magic_word = 0x12345678;
+uint32_t magic_word = 0x12345678; // for deploying initial program
+
+uint32_t read_word = 0x44414552;  // READ
+uint32_t rdbr_word = 0x52424452;  // RDBR
+uint32_t writ_word = 0x54495257;  // WRIT
+uint32_t wrbr_word = 0x52425257;  // WRBR
+uint32_t exec_word = 0x43455845;  // EXEC
 
 uint32_t start_addr = 0x00008000;
 uint32_t num_bytes  = 0;
 
-uint32_t payload_data[32767];
+uint32_t payload_data[32768];
 
 
 PIO pio, pioled;
@@ -120,6 +133,30 @@ uint8_t  uart_byte = 0;
    return(uart_word);
 }
 
+uint32_t uart_get_cmd(void)
+{
+uint32_t uart_word = 0;
+uint8_t  uart_byte = 0;
+bool     word_match = false;
+
+   while (!word_match)
+   {
+     uart_byte = uart_get_char();
+
+     uart_word = ((uart_word >> 8) & 0xffffff) | (uart_byte << 24);
+
+     if ((uart_word == read_word) ||
+         (uart_word == rdbr_word) ||
+         (uart_word == writ_word) ||
+         (uart_word == wrbr_word) ||
+         (uart_word == exec_word))
+     {
+        word_match = true;
+     }
+   }
+   return(uart_word);
+}
+
 uint32_t uart_get_word(void)
 {
 uint32_t uart_word = 0;
@@ -140,6 +177,8 @@ uint8_t  uart_byte = 0;
    return(uart_word);
 }
 
+// For initial program load (from UART)
+//
 void load_from_uart(uint32_t led_color)
 {
 uint32_t inword;
@@ -177,49 +216,148 @@ int count = 0;
     put_pixel(0x00000000);
 }
 
-void read_from_pcfx(uint32_t led_color_1, uint32_t led_color_2)
+void __not_in_flash_func(write_type_cmd)(uint32_t fx_command)
 {
-uint32_t inword;
-uint32_t indata;
+uint32_t start_addr;
+uint32_t num_bytes;
+uint32_t outword;
 int index = 0;
 int count;
-int i;
 
-    put_pixel(led_color_1);
+    start_addr  = uart_get_word();
+    num_bytes   = uart_get_word();
 
+    count = num_bytes;
+
+    while(count > 0) {
+      payload_data[index++] = uart_get_word();
+      count -= 4;
+    }
+
+    put_pixel(LED_MCU_TO_PCFX);
+    sleep_ms(10);
+
+    // note that PC-FX inverts on input, so we need to send all data as 1's complement
+    outword = ~fx_command;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    outword = ~start_addr;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    outword = ~num_bytes;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    count = (num_bytes / 4) + 1;
+    for (index = 0; index < count; index++) {
+       outword = ~payload_data[index];
+       pio_sm_put_blocking(pio, sm1, outword);
+    }
+
+    sleep_ms(10);
+}
+
+void __not_in_flash_func(read_type_cmd)(uint32_t fx_command)
+{
+uint32_t start_addr;
+uint32_t num_bytes;
+uint32_t outword;
+uint32_t inword, indata;
+uint32_t count = 0;
+uint32_t index = 0;
+int i = 0;
+
+    start_addr  = uart_get_word();
+    num_bytes   = uart_get_word();
+
+    put_pixel(LED_PCFX_TO_MCU);
+    sleep_ms(10);
+
+    // ------------
+    // send request
+    // ------------
+
+    // note that PC-FX inverts on input, so we need to send all data as 1's complement
+    outword = ~fx_command;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    outword = ~start_addr;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    outword = ~num_bytes;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    // ----------------
+    // receive response
+    // ----------------
+
+    count = num_bytes/4;
     index = 0;
-
-    count = ~(pio_sm_get_blocking(pio, sm1));
-
-    if (count > 32768) count = 32768;
 
     while(index < count) {
       inword = pio_sm_get_blocking(pio, sm1);
       indata = ~inword;
-//      printf("word: %8.8X\n", indata);
 
-      payload_data[index++] = (uint8_t)(indata & 0xff);
-      payload_data[index++] = (uint8_t)((indata >> 8) & 0xff);
-      payload_data[index++] = (uint8_t)((indata >> 16) & 0xff);
-      payload_data[index++] = (uint8_t)((indata >> 24) & 0xff);
+      payload_data[index++] = indata;
     }
 
     sleep_ms(10);
-    put_pixel(led_color_2);
+    put_pixel(LED_MCU_TO_UART);
 
-    putchar_raw((int)((count >> 8) & 0xff));
-    putchar_raw((int)(count & 0xff));
-
-    for (i = 0; i < count; i+=4) {
-      putchar_raw((int)payload_data[i]);
-      putchar_raw((int)payload_data[i+1]);
-      putchar_raw((int)payload_data[i+2]);
-      putchar_raw((int)payload_data[i+3]);
-      sleep_us(500);
+    for (i = 0; i < count; i++) {
+      putchar_raw((int)(payload_data[i] & 0xff));
+      putchar_raw((int)((payload_data[i] >> 8) & 0xff));
+      putchar_raw((int)((payload_data[i] >> 16) & 0xff));
+      putchar_raw((int)((payload_data[i] >> 24) & 0xff));
+      sleep_us(100);
     }
 
-    put_pixel(0x00000000);
+    sleep_ms(10);
 }
+
+void __not_in_flash_func(exec_type_cmd)(uint32_t fx_command)
+{
+uint32_t exec_addr;
+uint32_t outword;
+
+    put_pixel(LED_EXEC);
+    exec_addr  = uart_get_word();
+
+    // note that PC-FX inverts on input, so we need to send all data as 1's complement
+    outword = ~fx_command;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    outword = ~exec_addr;
+    pio_sm_put_blocking(pio, sm1, outword);
+
+    sleep_ms(10);
+}
+
+void __not_in_flash_func(get_cmd_from_uart)(void)
+{
+uint32_t fx_command;
+
+    put_pixel(LED_IDLE);
+    sleep_ms(10);
+
+    fx_command = uart_get_cmd();
+
+    pio_sm_clear_fifos(pio, sm1);  // in case startup placed junk in FIFOs
+    pio_sm_clear_fifos(pio, sm1);  // in case it was blocked on PUSH (one last word to drain)
+
+    if ((fx_command == read_word) || (fx_command == rdbr_word))
+    {
+       read_type_cmd(fx_command);
+    }
+    else if ((fx_command == writ_word) || (fx_command == wrbr_word))
+    {
+       write_type_cmd(fx_command);
+    }
+    else if (fx_command == exec_word)
+    {
+       exec_type_cmd(fx_command);
+    }
+}
+
 
 void write_to_pcfx(uint32_t led_color)
 {
@@ -249,7 +387,8 @@ int count = 0;
        pio_sm_put_blocking(pio, sm1, outword);
     }
 
-//    put_pixel(0x00000000);    // There may not be enough time for 2 color transitions
+    put_pixel(0x00000000);    // There may not be enough time for 2 color transitions
+    sleep_ms(10);
 }
 
 void ws2812_countdown()
@@ -275,7 +414,7 @@ int count;
     }
     sleep_ms(200);
 
-    put_pixel(urgb_u32(10, 10, 10));  // light
+    put_pixel(LED_IDLE);  // light white
 }
 
 int main() {
@@ -348,7 +487,7 @@ int count = 0;
 
 // wait at startup
 //
-    sleep_ms(3000);
+    sleep_ms(1500);
 
     pio_sm_clear_fifos(pio, sm1);  // in case startup placed junk in FIFOs
     pio_sm_clear_fifos(pio, sm1);  // in case it was blocked on PUSH (one last word to drain)
@@ -362,15 +501,16 @@ int count = 0;
     sleep_ms(100);
 
     // Show green while data transfer (PC->MCU) is happening
-    load_from_uart(urgb_u32(0,10,0));
+    load_from_uart(LED_UART_TO_MCU);
 
-    sleep_ms(500);
+    sleep_ms(200);
 
     // Show blue while data transfer (MCU->PC-FX) is happening
-    write_to_pcfx(urgb_u32(0,0,10));
+    write_to_pcfx(LED_MCU_TO_PCFX);
 
-    // Show red while data transfer (PC-FX->MCU) is happening
-    read_from_pcfx(urgb_u32(10,0,0),urgb_u32(10,10,0)); // red, then yellow
+    while(1) {
+      get_cmd_from_uart();
+    }
 
     return 0;
 }

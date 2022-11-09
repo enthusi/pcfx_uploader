@@ -55,53 +55,58 @@ Start:
     mov     2,r1
     ldsr    r1,chcw
     
-    call mypcfxReadPad0
-    mov r_keypad, r_tmp
-#
-# wait for user to kit a key on keypad0
-#
-wait_for_start:
-    call mypcfxReadPad0 
-    cmp r_tmp, r_keypad
-    bz wait_for_start
-    call wait
- 
+#=====================
+
+cmd_loop:
+    call ReadPad1          # get possible command
+
+    movw 0x44414552 r_tmp          # READ (endian-reversed)
+    cmp r_keypad, r_tmp
+    bz  read_command
+
+    movw 0x52424452 r_tmp          # RDBR (read BRAM type) (endian-reversed)
+    cmp r_keypad, r_tmp
+    bz  readbram_command
+
+    movw 0x43455845 r_tmp          # EXEC (Execute) (endian-reversed)
+    cmp r_keypad, r_tmp
+    bz  exec_command
+
+    br  cmd_loop
+
+
+#=====================
+exec_command:
+    call ReadPad1          # get address
+    jmp [r_keypad]
+
+#=====================
+read_command:
+    call ReadPad1          # get address
+    mov r_keypad, r_ptr
+
+    call ReadPad1          # get length
+    mov r_keypad, r_len
+
+    call send_block
+
+    br  cmd_loop
+#=====================
+readbram_command:
+    call ReadPad1          # get address
+    mov r_keypad, r_ptr
+
+    call ReadPad1          # get length
+    mov r_keypad, r_len
+
+# unlock BRAM
     mov 3, r_tmp	   # unlock backup RAM and external backup RAM
     out.h r_tmp, 0xc80[r0] # port for access control
 
-#
-# Send length on keypad1
-#
-    movw 0x00008000, r_tmp   # length = 32KB
-    call send_value
-    call wait
-
-    movw 0x00008000, r_len   # length = 32KB
-    movw 0xE0000000, r_ptr   # Backup memory
-#    movw 0xFFF00000, r_ptr   # ROM address
-
-send_loop:
-#    call wait
-#    ld.w 0[r_ptr], r_tmp
-#    call send_value
-#    add 4, r_ptr
-#    add -4, r_len
-#    bp send_loop
     call send_bram
-    
-    call wait
-    call wait
-    call wait
-    call wait
-    call wait
-    call wait
-    call wait
 
-endloop:    
-    mov 0x0000, r_tmp
-    call push_value
-    call wait
-    br endloop
+    br  cmd_loop
+#=====================
 
 #------------------------------------
 # r_ptr should hold the pointer to the data to be sent
@@ -121,14 +126,15 @@ send_bramloop:
     st.b r_tmp, 3[r_tmpptr]
 
     ld.w 0[r_tmpptr], r_tmp
-    call send_value
+    call send_value_pad1
     add 8, r_ptr
     add -4, r_len
     bp send_bramloop
     ret    
+
+.align 4
 sendword:
-.hword  0
-.hword  0
+.word  0
 
 #------------------------------------
 # r_ptr should hold the pointer to the data to be sent
@@ -136,7 +142,7 @@ sendword:
 send_block:
     call wait
     ld.w 0[r_ptr], r_tmp
-    call send_value
+    call send_value_pad1
     add 4, r_ptr
     add -4, r_len
     bp send_block
@@ -144,24 +150,27 @@ send_block:
 #------------------------------------
 # r_tmp should hold the data value to be sent
 #
-send_value:
+send_value_pad1:
     out.w r_tmp, 0xc0[r0] #set data line
     mov 1, r_keypad	# 1 = send out
-	out.h r_keypad, 0x80[r0]
-wait_for_send_ready:	
-	in.h 0x80[r0], r_keypad
-	andi 9, r_keypad, r_keypad
-	cmp 1, r_keypad	
-	bz wait_for_send_ready
+    out.h r_keypad, 0x80[r0]
+    call wait_for_pad1_ready
     ret    
 #-----------------------------------
-push_value:
-    movw 0x4F4B2000, r_tmp
-    out.w r_tmp, 0xc0[r0] #set data line
-    mov 1, r_keypad	# 1 = send out
-	out.h r_keypad, 0x80[r0]
-    ret    
+ReadPad1:
+    mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
+    out.h r_keypad, 0x80[r0]
+    call wait_for_pad1_ready
+    in.w 0xc0[r0], r_keypad
+    ret
 #------------------------------------
+wait_for_pad1_ready:	
+    in.h 0x80[r0], r_keypad
+    andi 9, r_keypad, r_keypad
+    cmp 1, r_keypad	
+    bz wait_for_pad1_ready
+    ret    
+#-----------------------------------
 wait:
     #this could be significantly shorter or even omitted but 
     #but also it doesn't cost much either
@@ -171,14 +180,14 @@ wloop:
     bne wloop
     ret
 #------------------------------------    
-mypcfxReadPad0:	
+ReadPad0:	
     mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
 	out.h r_keypad, 0x00[r0]
-wait_for_input_ready:	
+wait_for_pad0_ready:	
 	in.h 0x00[r0], r_keypad
 	andi 9, r_keypad, r_keypad
 	cmp 1, r_keypad	
-	bz wait_for_input_ready
+	bz wait_for_pad0_ready
 	in.w 0x40[r0], r_keypad
 	ret
 	
