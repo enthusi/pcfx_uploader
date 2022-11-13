@@ -224,6 +224,9 @@ uint32_t outword;
 int index = 0;
 int count;
 
+    put_pixel(LED_UART_TO_MCU);
+    sleep_ms(10);
+
     start_addr  = uart_get_word();
     num_bytes   = uart_get_word();
 
@@ -247,7 +250,10 @@ int count;
     outword = ~num_bytes;
     pio_sm_put_blocking(pio, sm1, outword);
 
-    count = (num_bytes / 4) + 1;
+    count = (num_bytes / 4);
+    if ((num_bytes & 3) != 0)
+       count++;
+
     for (index = 0; index < count; index++) {
        outword = ~payload_data[index];
        pio_sm_put_blocking(pio, sm1, outword);
