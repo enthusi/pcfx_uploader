@@ -22,7 +22,7 @@ from fx_xfer_lib import *
 #
 
 if ((len(sys.argv) != 6) and (len(sys.argv) != 5)):
-    print("Usage: getram <pcfxprog|nodeploy> <start_addr> <length> <output_file> [COM port]")
+    print("Usage: putram <pcfxprog|nodeploy> <start_addr> <length> <input_file> [COM port]")
     exit()
 
 addr=hexdecode(sys.argv[2])
@@ -60,13 +60,15 @@ if (sys.argv[1] != 'nodeploy'):
 # External Backup RAM:
 #addr=0xE8000000
 
-remainder = size
-f = open(sys.argv[4], 'wb') 
-
-memory = readfx(ser, addr, size)
-f.write(memory)
-
+f = open(sys.argv[4], 'rb') 
+memory = f.read(size)
 f.close()
+
+if ((addr >= 0xE0000000) and (addr <= 0xEFFFFFFF)):
+    wrbr_data(ser, addr, memory)
+else:
+    writ_data(ser, addr, memory)
+
 
 ser.close()
 

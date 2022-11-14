@@ -68,6 +68,14 @@ cmd_loop:
     cmp r_keypad, r_tmp
     bz  readbram_command
 
+    movw 0x54495257 r_tmp          # WRIT (endian-reversed)
+    cmp r_keypad, r_tmp
+    bz  write_command
+
+    movw 0x52425257 r_tmp          # WRBR (read BRAM type) (endian-reversed)
+    cmp r_keypad, r_tmp
+    bz  writebram_command
+
     movw 0x43455845 r_tmp          # EXEC (Execute) (endian-reversed)
     cmp r_keypad, r_tmp
     bz  exec_command
@@ -104,6 +112,32 @@ readbram_command:
     out.h r_tmp, 0xc80[r0] # port for access control
 
     call send_bram
+
+    br  cmd_loop
+#=====================
+write_command:
+    call ReadPad1          # get address
+    mov r_keypad, r_ptr
+
+    call ReadPad1          # get length
+    mov r_keypad, r_len
+
+    call recv_block
+
+    br  cmd_loop
+#=====================
+writebram_command:
+    call ReadPad1          # get address
+    mov r_keypad, r_ptr
+
+    call ReadPad1          # get length
+    mov r_keypad, r_len
+
+# unlock BRAM
+    mov 3, r_tmp	   # unlock backup RAM and external backup RAM
+    out.h r_tmp, 0xc80[r0] # port for access control
+
+    call recv_bram
 
     br  cmd_loop
 #=====================
@@ -156,6 +190,56 @@ send_value_pad1:
     out.h r_keypad, 0x80[r0]
     call wait_for_pad1_ready
     ret    
+#-----------------------------------
+# r_ptr should hold the pointer to where the data is to be sent
+# r_len should hold the length of data to be sent (in bytes)
+#
+recv_bram:
+    cmp r0,r_len
+    bz rcvbrm_done
+    movw sendword, r_tmpptr
+
+rcvbrm_loop:
+    call wait
+    call ReadPad1
+
+    st.w r_keypad, 0[r_tmpptr]
+
+    ld.b 0[r_tmpptr], r_tmp
+    st.b r_tmp, 0[r_ptr]
+    ld.b 1[r_tmpptr], r_tmp
+    st.b r_tmp, 2[r_ptr]
+    ld.b 2[r_tmpptr], r_tmp
+    st.b r_tmp, 4[r_ptr]
+    ld.b 3[r_tmpptr], r_tmp
+    st.b r_tmp, 6[r_ptr]
+
+    add 8, r_ptr
+    add -4, r_len
+    bz rcvbrm_done
+    bp rcvbrm_loop
+
+rcvbrm_done:
+    ret
+#-----------------------------------
+# r_ptr should hold the pointer to where the data is to be sent
+# r_len should hold the length of data to be sent (in bytes)
+#
+recv_block:
+    cmp r0,r_len
+    bz recv_done
+
+rcvblk_loop:
+    call wait
+    call ReadPad1
+    st.w r_keypad, 0[r_ptr]
+    add 4, r_ptr
+    add -4, r_len
+    bz recv_done
+    bp rcvblk_loop
+
+recv_done:
+    ret
 #-----------------------------------
 ReadPad1:
     mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
