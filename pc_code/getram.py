@@ -28,8 +28,6 @@ if ((len(sys.argv) != 6) and (len(sys.argv) != 5)):
 addr=hexdecode(sys.argv[2])
 size=hexdecode(sys.argv[3])
 
-blocksize=0x8000
-
 if (size < 1):
     print("length of data fetch must be greater than zero")
     exit()

@@ -100,10 +100,7 @@ def readfx(port, addr, size, blksize=BLOCKSIZE):
     count = 0
 
     while (remainder > 0):
-        if (remainder > blksize):
-            chunk = blksize
-        else:
-            chunk = remainder
+        chunk = min(remainder, blksize)
 
         if ((addr >= 0xE0000000) and (addr <= 0xEFFFFFFF)):
             mem = rdbr_data(port, addr, chunk)
@@ -176,5 +173,30 @@ def wrbr_data(port, addr, mem):
         #print (port.write(databytes))     # write a string
         port.write(databytes)     # write a string
         port.flush()
+    return
+
+#
+# Write memory, while breaking it down into manageable-sized fetches:
+#
+def writefx(port, addr, allmem, size, blksize=BLOCKSIZE):
+    remainder = size
+    start = 0
+    end = min(len(allmem), size)
+    numbytes = end - start
+
+    while (numbytes > 0):
+        chunksize = min(numbytes, blksize)
+        mem = allmem[start:(start+chunksize)] 
+
+        if ((addr >= 0xE0000000) and (addr <= 0xEFFFFFFF)):
+            wrbr_data(port, addr, mem)
+            addr = addr + chunksize + chunksize     # only every second byte
+        else:
+            writ_data(port, addr, mem)
+            addr = addr + chunksize
+
+        start = start + chunksize
+        numbytes = end - start
+
     return
 
