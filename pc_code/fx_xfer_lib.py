@@ -200,3 +200,14 @@ def writefx(port, addr, allmem, size, blksize=BLOCKSIZE):
 
     return
 
+#
+# Execute code at a point in memory
+#
+def execfx(port, addr):
+    print('EXEC',end=', ') 
+    print('{0:0{1}X}'.format(addr,8)) 
+    port.write(b'EXEC')
+    port.write(addr.to_bytes(4,'little'))
+    port.flush()
+    return
+
