@@ -1,1 +1,1 @@
-.equiv VERSION,    20
+.equiv VERSION,    4

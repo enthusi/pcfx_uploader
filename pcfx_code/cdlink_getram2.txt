@@ -1,0 +1,7 @@
+binary getram2
+name client
+maker enthusi
+makerid n2c
+date 20221118
+country 1
+version 1
