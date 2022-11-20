@@ -539,7 +539,19 @@ rcvblk_loop:
 recv_done:
     ret
 #-----------------------------------
+#------------------------------------    
 ReadPad1:
+    mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
+	out.h r_keypad, 0x80[r0]
+1:	
+	in.h 0x80[r0], r_keypad
+	andi 9, r_keypad, r_keypad
+	cmp 1, r_keypad	
+	bz 1b
+	in.w 0xc0[r0], r_keypad
+	ret
+#---------------------------------
+oldReadPad1:
     mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
     out.h r_keypad, 0x80[r0]
     call wait_for_pad1_ready
