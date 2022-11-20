@@ -5,20 +5,19 @@
 .include "version.s"
 
 #===============================
-.equiv r_keypad, r29
+.equiv r_register, r6    
+.equiv r_value,    r7    
 .equiv r_ptr,    r10
 .equiv r_len,    r11
 .equiv r_tmp,    r14
 .equiv r_tmpptr, r15
-
-.equiv r_register, r6    
-.equiv r_value,    r7    
+.equiv r_screenx, r16
+.equiv r_screeny, r17
 .equiv r_tmp_loop, r20
 .equiv r_tmp_adr,  r21
 .equiv r_tmp_data, r22
+.equiv r_keypad, r29
 
-.equiv r_screenx, r15
-.equiv r_screeny, r17
 
 #===============================
 .globl _start
@@ -45,7 +44,7 @@ relocate_and_launch_full_client:
     movw client_code, r10
     movw 0x1000, r11
     movea (client_code_end - client_code),r0, r12
-    movw 0x1000, r14
+   
 1:
     ld.w 0[r10],r13
     st.w r13,0[r11]
@@ -60,10 +59,26 @@ relocate_and_launch_full_client:
     or	r_tmp, r_tmp_data /*keep formerly set bits*/
     ldsr	r_tmp_data, PSW
 	
+	mov SUP_CTRL, r_register	/*; DMA control*/
+	out.h r_register, SUPA_reg[r0]
+	out.h r0, SUPA_dat[r0]
+	
+	
+	#clear irq vectors HARD
+	movw 16, r_tmp_loop
+	movw 0x7FC0, r_tmp_adr
+	
+1:
+	out.w r0, 0[r_tmp_adr]
+	add 4, r_tmp_adr
+	add -1, r_tmp_loop
+	bne 1b
+	
+	 movw 0x1000, r14
     jmp [r14]
 #====================================
 plot_logo:
-    movw 27, r_tmp_loop
+    movw 25, r_tmp_loop
     shl 5, r_tmp_loop #only *32 as KING_KRAM_ADR_write is in half-words!
     mov KING_KRAM_ADR_write, r_register
 	movw ((0x010000)| (1 << KING_b_inc)) , r_tmp_data
@@ -289,7 +304,7 @@ put_palette:
 client_code:
     #plot version number
     movw 26, r_screenx
-    movw 27, r_screeny #start on line 1 because of over/underscan
+    movw 25, r_screeny #start on line 1 because of over/underscan
     #consecutive blocks can simply add 1 to this register!
     movw VERSION, r_value
     call plot_r_value
@@ -561,7 +576,7 @@ wait_for_pad0_ready:
 #------------------------------------
 plot_r_value:  
     #movw 0x12345678, r_value
-    mov r_screeny,r_tmp_loop
+    mov r_screeny, r_tmp_loop
     shl 5, r_tmp_loop #only *32 as KING_KRAM_ADR_write is in half-words!
     
     mov r_value, r_tmp_adr
@@ -601,6 +616,9 @@ plot_r_value:
 	
 .hword 0x55aa
 .hword 0x77bb
+.hword 0x55aa
+.hword 0x77bb
+
 client_code_end:
 #===================================
 .align 2
