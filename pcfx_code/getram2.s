@@ -446,21 +446,20 @@ writebram_command:
 # r_len should hold the length of data to be sent (in bytes)
 send_bram:
     #movw sendword, r_tmpptr
-	mov sp, r_tmpptr
     add -4, sp
 
 send_bramloop:
     call wait
     ld.b 0[r_ptr], r_tmp
-    st.b r_tmp, 0[r_tmpptr]
+    st.b r_tmp, 0[sp]
     ld.b 2[r_ptr], r_tmp
-    st.b r_tmp, 1[r_tmpptr]
+    st.b r_tmp, 1[sp]
     ld.b 4[r_ptr], r_tmp
-    st.b r_tmp, 2[r_tmpptr]
+    st.b r_tmp, 2[sp]
     ld.b 6[r_ptr], r_tmp
-    st.b r_tmp, 3[r_tmpptr]
+    st.b r_tmp, 3[sp]
 
-    ld.w 0[r_tmpptr], r_tmp
+    ld.w 0[sp], r_tmp
     call send_value_pad1
     add 8, r_ptr
     add -4, r_len
@@ -496,22 +495,21 @@ recv_bram:
     cmp r0,r_len
     bz rcvbrm_done
     #movw sendword, r_tmpptr
-    mov sp, r_tmpptr
     add -4, sp
 
 rcvbrm_loop:
     call wait
     call ReadPad1
 
-    st.w r_keypad, 0[r_tmpptr]
+    st.w r_keypad, 0[sp]
 
-    ld.b 0[r_tmpptr], r_tmp
+    ld.b 0[sp], r_tmp
     st.b r_tmp, 0[r_ptr]
-    ld.b 1[r_tmpptr], r_tmp
+    ld.b 1[sp], r_tmp
     st.b r_tmp, 2[r_ptr]
-    ld.b 2[r_tmpptr], r_tmp
+    ld.b 2[sp], r_tmp
     st.b r_tmp, 4[r_ptr]
-    ld.b 3[r_tmpptr], r_tmp
+    ld.b 3[sp], r_tmp
     st.b r_tmp, 6[r_ptr]
 
     add 8, r_ptr
