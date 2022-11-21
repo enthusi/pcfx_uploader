@@ -445,7 +445,9 @@ writebram_command:
 # r_ptr should hold the pointer to the data to be sent
 # r_len should hold the length of data to be sent (in bytes)
 send_bram:
-    movw sendword, r_tmpptr
+    #movw sendword, r_tmpptr
+	mov sp, r_tmpptr
+    add -4, sp
 
 send_bramloop:
     call wait
@@ -463,11 +465,8 @@ send_bramloop:
     add 8, r_ptr
     add -4, r_len
     bp send_bramloop
+    add 4, sp
     ret    
-
-.align 4
-sendword:
-.word  0
 
 #------------------------------------
 # r_ptr should hold the pointer to the data to be sent
@@ -496,7 +495,9 @@ send_value_pad1:
 recv_bram:
     cmp r0,r_len
     bz rcvbrm_done
-    movw sendword, r_tmpptr
+    #movw sendword, r_tmpptr
+    mov sp, r_tmpptr
+    add -4, sp
 
 rcvbrm_loop:
     call wait
@@ -519,6 +520,7 @@ rcvbrm_loop:
     bp rcvbrm_loop
 
 rcvbrm_done:
+    add 4, sp
     ret
 #-----------------------------------
 # r_ptr should hold the pointer to where the data is to be sent
