@@ -23,6 +23,7 @@
 .globl _start
 .org = 0x8000
 _start = 0x8000
+.equiv relocate_to, 0x0000
 Start:
 
     movw 0x200000, sp
@@ -42,7 +43,7 @@ Start:
     call  plot_logo
 relocate_and_launch_full_client:
     movw client_code, r10
-    movw 0x1000, r11
+    movw relocate_to, r11
     movea (client_code_end - client_code),r0, r12
    
 1:
@@ -74,7 +75,7 @@ relocate_and_launch_full_client:
 	add -1, r_tmp_loop
 	bne 1b
 	
-	 movw 0x1000, r14
+	 movw relocate_to, r14
     jmp [r14]
 #====================================
 plot_logo:
