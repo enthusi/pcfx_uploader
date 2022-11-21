@@ -69,7 +69,7 @@ relocate_and_launch_full_client:
 	movw 0x7FC0, r_tmp_adr
 	
 1:
-	out.w r0, 0[r_tmp_adr]
+	st.w r0, 0[r_tmp_adr]
 	add 4, r_tmp_adr
 	add -1, r_tmp_loop
 	bne 1b
