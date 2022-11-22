@@ -89,7 +89,7 @@ plot_logo:
 	
 	mov KING_KRAM_rw, r_register
     out.h r_register, KING_reg[r0]
-    movw 12, r_tmp_loop
+    movw (12), r_tmp_loop
     movw 256, r_tmp_data
 1:
 	out.h r_tmp_data, (KING_dat)[r0]
@@ -269,7 +269,7 @@ setup_display:
     ret
 #====================================		
 push_charset:
-    movw 0x10c0, r_tmp_loop
+    movw 0x1260, r_tmp_loop
 	movw data_charset, r_tmp_adr
 
 	mov KING_KRAM_ADR_write, r_register
@@ -288,7 +288,7 @@ push_charset:
 	ret
 #====================================
 put_palette:    
-    movw 2, r_tmp_loop	
+    movw 4, r_tmp_loop	
 	movw data_palette, r_tmp_adr
 	mov HuC6261_PAL_DATA, r_register	
 	out.h r_register, HuC6261_reg[r0]
@@ -321,6 +321,9 @@ cmd_loop:
     call ReadPad1          # get possible command into r_keypad
     mov 1, r_screenx
     mov r_keypad, r_value
+    
+    #movw 0x44414552 r_value 
+    #call plot_r_value_letter
     call plot_r_value              # plot last KEYPAD input, will be the last command during running it
                                    # TODO: use an actual written command word here later
     
@@ -349,6 +352,7 @@ cmd_loop:
 
 #=====================
 exec_command:
+    call plot_r_value_letter
     call ReadPad1          # get address
     ldsr    r0,chcw
     movea   0x8001,r0,r1
@@ -374,6 +378,7 @@ exec_command:
 
 #=====================
 read_command:
+    call plot_r_value_letter
     call ReadPad1          # get address
     mov r_keypad, r_ptr
     
@@ -392,6 +397,7 @@ read_command:
     br  cmd_loop
 #=====================
 readbram_command:
+    call plot_r_value_letter
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -407,6 +413,7 @@ readbram_command:
     br  cmd_loop
 #=====================
 write_command:
+    call plot_r_value_letter
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -426,6 +433,7 @@ write_command:
     br  cmd_loop
 #=====================
 writebram_command:
+    call plot_r_value_letter
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -587,6 +595,49 @@ wait_for_pad0_ready:
 	ret
 
 #------------------------------------
+plot_r_value_letter:
+    mov r_screeny, r_tmp_loop
+    shl 5, r_tmp_loop #only *32 as KING_KRAM_ADR_write is in half-words!
+    
+    mov r_value, r_tmp_adr
+    #separate 4 bytes of value and output one by one
+ 
+    mov KING_KRAM_ADR_write, r_register
+	movw ((0x010000)| (1 << KING_b_inc)) , r_tmp_data
+	add r_tmp_loop, r_tmp_data
+	add r_screenx, r_tmp_data
+	
+	out.h r_register, KING_reg[r0]
+	out.w r_tmp_data, KING_dat[r0]
+	
+	mov KING_KRAM_rw, r_register
+    out.h r_register, KING_reg[r0]
+    
+    mov r_tmp_adr, r_tmp_loop
+    andi 0xff, r_tmp_loop, r_tmp_loop
+    addi (256+12-0x41), r_tmp_loop, r_tmp_loop
+    out.h r_tmp_loop, (KING_dat)[r0]
+    
+    mov r_tmp_adr, r_tmp_loop
+    shr 8, r_tmp_loop
+    andi 0xff, r_tmp_loop, r_tmp_loop
+    addi (256+12-0x41), r_tmp_loop, r_tmp_loop
+    out.h r_tmp_loop, (KING_dat)[r0]
+    
+    mov r_tmp_adr, r_tmp_loop
+    shr 16, r_tmp_loop
+    andi 0xff, r_tmp_loop, r_tmp_loop
+    addi (256+12-0x41), r_tmp_loop, r_tmp_loop
+    out.h r_tmp_loop, (KING_dat)[r0]
+    
+    mov r_tmp_adr, r_tmp_loop
+    shr 24, r_tmp_loop
+    andi 0xff, r_tmp_loop, r_tmp_loop
+    addi (256+12-0x41), r_tmp_loop, r_tmp_loop
+    out.h r_tmp_loop, (KING_dat)[r0]
+    
+    ret	
+#-----------------------------------    
 plot_r_value:  
     #movw 0x12345678, r_value
     mov r_screeny, r_tmp_loop
@@ -656,12 +707,14 @@ client_code_end:
 #===================================================
 .align 2
 data_charset:
-.incbin "hexfont4.dat"
+.incbin "hexfont4abc.dat"
 
 .align 2
 data_palette:
 .hword 0x0088 
-.hword 0xff0f #font color
+.hword 0xa088#font color
+.hword 0xc088 #font color
+.hword 0xf088 #font color
 
 .hword 0x55aa
 .hword 0x77bb
