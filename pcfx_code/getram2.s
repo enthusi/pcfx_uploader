@@ -322,7 +322,7 @@ cmd_loop:
     mov 1, r_screenx
     mov r_keypad, r_value
     
-    #movw 0x44414552 r_value 
+    #movw 0x44414552 r_value       # you can use these 2 lines to test the font or debug the feature
     #call plot_r_value_letter
     call plot_r_value              # plot last KEYPAD input, will be the last command during running it
                                    # TODO: use an actual written command word here later
@@ -401,15 +401,23 @@ readbram_command:
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
+    mov 8, r_screenx       # plot address
+    mov r_keypad, r_value
+    call plot_r_value
+    
     call ReadPad1          # get length
     mov r_keypad, r_len
+    
+    mov 14, r_screenx       # plot address
+    mov r_keypad, r_value
+    call plot_r_value
 
 # unlock BRAM
     mov 3, r_tmp	   # unlock backup RAM and external backup RAM
     out.h r_tmp, 0xc80[r0] # port for access control
 
     call send_bram
-
+    add 1, r_screeny        #next block displays next line  
     br  cmd_loop
 #=====================
 write_command:
@@ -437,15 +445,23 @@ writebram_command:
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
+    mov 8, r_screenx       # plot address
+    mov r_keypad, r_value
+    call plot_r_value
+    
     call ReadPad1          # get length
     mov r_keypad, r_len
 
+    mov 14, r_screenx       # plot address
+    mov r_keypad, r_value
+    call plot_r_value
+    
 # unlock BRAM
     mov 3, r_tmp	   # unlock backup RAM and external backup RAM
     out.h r_tmp, 0xc80[r0] # port for access control
 
     call recv_bram
-
+    add 1, r_screeny        #next block displays next line
     br  cmd_loop
 #=====================
 
