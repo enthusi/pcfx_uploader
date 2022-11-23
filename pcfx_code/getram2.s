@@ -322,9 +322,9 @@ cmd_loop:
     mov 1, r_screenx
     mov r_keypad, r_value
     
-    movw 0x44414552 r_value       # you can use these 2 lines to test the font or debug the feature
-    call plot_r_value_letter
-    #call plot_r_value              # plot last KEYPAD input, will be the last command during running it
+    #movw 0x44414552 r_value       # you can use these 2 lines to test the font or debug the feature
+    #call plot_r_value_letter
+    call plot_r_value              # plot last KEYPAD input, will be the last command during running it
                                    # TODO: use an actual written command word here later
     
     movw 0x44414552 r_tmp          # READ (endian-reversed)
