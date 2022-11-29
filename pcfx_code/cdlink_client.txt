@@ -1,0 +1,7 @@
+binary client
+name client
+maker enthusi
+makerid n2c
+date 20221129
+country 1
+version 1
