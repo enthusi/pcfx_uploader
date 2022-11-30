@@ -5,40 +5,6 @@ import time
 BLOCKSIZE = 32768
 
 #
-# deploy a program as per initial load (magic number 0x12345678)
-# (soon to be deprecated)
-#
-def deploy_program(port, program):
-    length = len(program)
-
-    words = length//4
-    rest = length - words*4
-    # print (length,words,rest)
-
-    #send magic bytes for longan!
-    #print(port.write(0x12345678.to_bytes(4,'little')))
-    port.write(0x12345678.to_bytes(4,'little'))
-    port.flush()
-    #transfer length in bytes
-    #print(port.write(length.to_bytes(4,'little')))
-    port.write(length.to_bytes(4,'little'))
-    port.flush()
-
-    #transfer data
-    databytes=bytearray(program)
-    #print (port.write(databytes))     # write a string
-    port.write(databytes)     # write a string
-    port.flush()
-
-    filler=[0x00]
-    for fill in range(rest):
-        databytes=bytearray(filler)
-        #print (port.write(databytes))     # write a string
-        port.write(databytes)     # write a string
-        port.flush()
-    return
- 
-#
 # Get a value from command line and convert it if it has a hexadecimal prefix
 #
 def hexdecode(input):

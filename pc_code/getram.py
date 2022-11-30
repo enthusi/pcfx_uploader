@@ -15,18 +15,18 @@ from fx_xfer_lib import *
 # - READ and RDBR (read BRAM) function are implemented and tested
 # - WRIT, WRBR, and EXEC functions are roughed-in on the microcontroller but not implemented here
 #
-#   Usage: getram <pcfxprog> <start_addr> <length> <output_file> [COM port]
+#   Usage: getram <start_addr> <length> <output_file> [COM port]
 #
 #   Example:
-#     python getram.py getram 0xfff00000 0x100000 pcfxbios.bin COM3
+#     python getram.py 0xfff00000 0x100000 pcfxbios.bin COM3
 #
 
-if ((len(sys.argv) != 6) and (len(sys.argv) != 5)):
-    print("Usage: getram <pcfxprog|nodeploy> <start_addr> <length> <output_file> [COM port]")
+if ((len(sys.argv) != 5) and (len(sys.argv) != 4)):
+    print("Usage: getram <start_addr> <length> <output_file> [COM port]")
     exit()
 
-addr=hexdecode(sys.argv[2])
-size=hexdecode(sys.argv[3])
+addr=hexdecode(sys.argv[1])
+size=hexdecode(sys.argv[2])
 
 if (size < 1):
     print("length of data fetch must be greater than zero")
@@ -39,17 +39,13 @@ ser.baudrate = 115200
 # Add override for windows-style COM ports.
 # Usage:
 #   python send.py mandelbrot COM24
-if (len(sys.argv) == 6):
-    ser.port = sys.argv[5]
+if (len(sys.argv) == 5):
+    ser.port = sys.argv[4]
 else:
     ser.port = '/dev/ttyUSB0'
 
 ser.open()
 # print(ser)
-
-if (sys.argv[1] != 'nodeploy'):
-    fx_program = open(sys.argv[1],'rb').read()
-    deploy_program(ser, fx_program)
 
 # BIOS:
 #addr=0xFFF00000
@@ -59,7 +55,7 @@ if (sys.argv[1] != 'nodeploy'):
 #addr=0xE8000000
 
 remainder = size
-f = open(sys.argv[4], 'wb') 
+f = open(sys.argv[3], 'wb') 
 
 memory = readfx(ser, addr, size)
 f.write(memory)
