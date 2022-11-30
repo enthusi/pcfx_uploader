@@ -64,6 +64,7 @@ uint32_t rdbr_word = 0x52424452;  // RDBR
 uint32_t writ_word = 0x54495257;  // WRIT
 uint32_t wrbr_word = 0x52425257;  // WRBR
 uint32_t exec_word = 0x43455845;  // EXEC
+uint32_t call_word = 0x4C4C4143;  // CALL
 
 uint32_t start_addr = 0x00008000;
 uint32_t num_bytes  = 0;
@@ -149,7 +150,8 @@ bool     word_match = false;
          (uart_word == rdbr_word) ||
          (uart_word == writ_word) ||
          (uart_word == wrbr_word) ||
-         (uart_word == exec_word))
+         (uart_word == exec_word) ||
+         (uart_word == call_word))
      {
         word_match = true;
      }
@@ -177,44 +179,6 @@ uint8_t  uart_byte = 0;
    return(uart_word);
 }
 
-// For initial program load (from UART)
-//
-void load_from_uart(uint32_t led_color)
-{
-uint32_t inword;
-int index = 0;
-int count = 0;
-
-    inword = uart_get_magic_word();
-    put_pixel(led_color);
-
-//    start_addr = uart_get_word();  // this is not sent from PC
-    start_addr = 0x00008000;
-
-#ifdef DEBUG_IT
-    printf("Start_addr = %8.8X\n", start_addr);
-#endif
-
-    num_bytes  = uart_get_word();
-#ifdef DEBUG_IT
-    printf("num_bytes  = %8.8X\n", num_bytes);
-#endif
-
-    count = num_bytes;
-
-    while(count > 0) {
-#ifdef DEBUG_IT
-      if (count == ((count / 1000) * 1000))
-         printf("count = %d\n", count);
-#endif
-
-      payload_data[index++] = uart_get_word();
-      count -= 4;
-    }
-
-    sleep_ms(1000);
-    put_pixel(0x00000000);
-}
 
 void __not_in_flash_func(write_type_cmd)(uint32_t fx_command)
 {
@@ -358,44 +322,12 @@ uint32_t fx_command;
     {
        write_type_cmd(fx_command);
     }
-    else if (fx_command == exec_word)
+    else if ((fx_command == exec_word) || (fx_command == call_word))
     {
        exec_type_cmd(fx_command);
     }
 }
 
-
-void write_to_pcfx(uint32_t led_color)
-{
-uint32_t outword;
-int index = 0;
-int count = 0;
-
-    put_pixel(led_color);
-    sleep_ms(1000);
-
-    // note that PC-FX inverts on input, so we need to send all data as 1's complement
-    outword = ~magic_word;
-    pio_sm_put_blocking(pio, sm1, outword);
-
-    outword = ~start_addr;
-    pio_sm_put_blocking(pio, sm1, outword);
-
-    outword = ~start_addr;   // this instance is the execution address
-    pio_sm_put_blocking(pio, sm1, outword);
-
-    outword = ~num_bytes;
-    pio_sm_put_blocking(pio, sm1, outword);
-
-    count = (num_bytes / 4) + 1;
-    for (index = 0; index < count; index++) {
-       outword = ~payload_data[index];
-       pio_sm_put_blocking(pio, sm1, outword);
-    }
-
-    put_pixel(0x00000000);    // There may not be enough time for 2 color transitions
-    sleep_ms(10);
-}
 
 void ws2812_countdown()
 {
@@ -504,15 +436,8 @@ int count = 0;
 // Now flash LED(s) to signify all is well
 //
     ws2812_countdown();
-    sleep_ms(100);
-
-    // Show green while data transfer (PC->MCU) is happening
-    load_from_uart(LED_UART_TO_MCU);
 
     sleep_ms(200);
-
-    // Show blue while data transfer (MCU->PC-FX) is happening
-    write_to_pcfx(LED_MCU_TO_PCFX);
 
     while(1) {
       get_cmd_from_uart();
