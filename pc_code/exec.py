@@ -8,7 +8,7 @@ from fx_xfer_lib import *
 # Notes:
 #
 # This program will:
-#   - load a program into PC-FX memory, and then execute at the starting memory location
+#   - transfer execution at the stated memory location
 #
 #   Usage: exec <address> [COM port]
 #
