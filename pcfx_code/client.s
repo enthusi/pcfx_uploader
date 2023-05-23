@@ -388,7 +388,7 @@ read_command:
     
     call ReadPad1          # get length
     mov r_keypad, r_len
-    mov 14, r_screenx       # plot address
+    mov 14, r_screenx       # plot length
     mov r_keypad, r_value
     call plot_r_value
     
@@ -408,7 +408,7 @@ readbram_command:
     call ReadPad1          # get length
     mov r_keypad, r_len
     
-    mov 14, r_screenx       # plot address
+    mov 14, r_screenx       # plot length
     mov r_keypad, r_value
     call plot_r_value
 
@@ -432,7 +432,7 @@ write_command:
     call ReadPad1          # get length
     mov r_keypad, r_len
 
-    mov 14, r_screenx       # plot address
+    mov 14, r_screenx       # plot length
     mov r_keypad, r_value
     call plot_r_value
     
@@ -470,6 +470,7 @@ writebram_command:
 # r_len should hold the length of data to be sent (in bytes)
 send_bram:
     #movw sendword, r_tmpptr
+    call wait
     add -4, sp
 
 send_bramloop:
@@ -487,7 +488,10 @@ send_bramloop:
     call send_value_pad1
     add 8, r_ptr
     add -4, r_len
+    bz sendbrm_done
     bp send_bramloop
+
+sendbrm_done:
     add 4, sp
     ret    
 
@@ -496,17 +500,29 @@ send_bramloop:
 # r_len should hold the length of data to be sent (in bytes)
 send_block:
     call wait
+
+send_blockloop:
+    call wait
     ld.w 0[r_ptr], r_tmp
     call send_value_pad1
     add 4, r_ptr
     add -4, r_len
-    bp send_block
+    bz send_done
+    bp send_blockloop
+
+send_done:
     ret    
 #------------------------------------
 # r_tmp should hold the data value to be sent
 #
 send_value_pad1:
-    out.w r_tmp, 0xc0[r0] #set data line
+    mov r_tmp, r_keypad
+    andi 0xffff, r_tmp, r_tmp
+    out.h r_tmp, 0xc0[r0]    #set lower halfword of data
+
+    shr   16, r_keypad
+    out.h r_keypad, 0xc2[r0] #set upper halfword of data
+
     mov 1, r_keypad	# 1 = send out
     out.h r_keypad, 0x80[r0]
     call wait_for_pad1_ready
@@ -519,6 +535,8 @@ recv_bram:
     cmp r0,r_len
     bz rcvbrm_done
     #movw sendword, r_tmpptr
+
+    call wait
     add -4, sp
 
 rcvbrm_loop:
@@ -551,6 +569,7 @@ rcvbrm_done:
 recv_block:
     cmp r0,r_len
     bz recv_done
+    call wait
 
 rcvblk_loop:
     call wait
@@ -566,18 +585,18 @@ recv_done:
 #-----------------------------------
 #------------------------------------    
 ReadPad1:
-    mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
+    mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
 	out.h r_keypad, 0x80[r0]
 1:	
 	in.h 0x80[r0], r_keypad
 	andi 9, r_keypad, r_keypad
-	cmp 1, r_keypad	
-	bz 1b
+	cmp 8, r_keypad	
+	bnz 1b
 	in.w 0xc0[r0], r_keypad
 	ret
 #---------------------------------
 oldReadPad1:
-    mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
+    mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
     out.h r_keypad, 0x80[r0]
     call wait_for_pad1_ready
     in.w 0xc0[r0], r_keypad
@@ -586,8 +605,8 @@ oldReadPad1:
 wait_for_pad1_ready:	
     in.h 0x80[r0], r_keypad
     andi 9, r_keypad, r_keypad
-    cmp 1, r_keypad	
-    bz wait_for_pad1_ready
+    cmp 8, r_keypad	
+    bnz wait_for_pad1_ready
     ret    
 #-----------------------------------
 wait:
@@ -600,13 +619,13 @@ wloop:
     ret
 #------------------------------------    
 ReadPad0:	
-    mov 5, r_keypad	# 5 = Transmit enable + receive enable*/
+    mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
 	out.h r_keypad, 0x00[r0]
 wait_for_pad0_ready:	
 	in.h 0x00[r0], r_keypad
 	andi 9, r_keypad, r_keypad
-	cmp 1, r_keypad	
-	bz wait_for_pad0_ready
+	cmp 8, r_keypad	
+	bnz wait_for_pad0_ready
 	in.w 0x40[r0], r_keypad
 	ret
 

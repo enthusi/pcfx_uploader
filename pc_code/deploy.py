@@ -7,12 +7,17 @@ from fx_xfer_lib import *
 
 # Notes:
 #
-# This program will write the PC-FX's Backup memory from a 32KB file
+# This program will:
+#   - load a program into PC-FX memory, and then
+#   - execute at an arbitrary memory location (does not need to be in the loaded program)
 #
 #   Usage: deploy <input_file> <address> <exec_address> [COM port]
 #
 #   Example:
 #     python deploy.py mandelbrot 0x8000 0x8000 COM3
+#
+# Note: Most programs are compiled to be loaded into 0x8000 area
+#       with an entry address of 0x8000
 #
 
 if ((len(sys.argv) != 5) and (len(sys.argv) != 4)):
@@ -23,8 +28,6 @@ ser = serial.Serial()
 ser.baudrate = 115200
 
 # Add override for windows-style COM ports.
-# Usage:
-#   python send.py mandelbrot COM24
 if (len(sys.argv) == 5):
     ser.port = sys.argv[4]
 else:

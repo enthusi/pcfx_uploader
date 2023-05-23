@@ -6,14 +6,9 @@ import time
 from fx_xfer_lib import *
 
 # Notes:
-# - Functions will soon be pulled out into an importable module
-# - print functions in the program-deploy section were commented out; these comments can be removed
-#
 # This program currently:
-# - deploys a program to the FX (via the 'loader' protocol)
-# - then communicates to the deployed program (according to its slightly-different protocol)
-# - READ and RDBR (read BRAM) function are implemented and tested
-# - WRIT, WRBR, and EXEC functions are roughed-in on the microcontroller but not implemented here
+# - communicates to the loader program (loaded by CDROM)
+# - READ and RDBR (read BRAM) functions are implemented and tested
 #
 #   Usage: getram <start_addr> <length> <output_file> [COM port]
 #
@@ -37,8 +32,6 @@ ser = serial.Serial()
 ser.baudrate = 115200
 
 # Add override for windows-style COM ports.
-# Usage:
-#   python send.py mandelbrot COM24
 if (len(sys.argv) == 5):
     ser.port = sys.argv[4]
 else:

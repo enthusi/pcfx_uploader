@@ -7,12 +7,16 @@ from fx_xfer_lib import *
 
 # Notes:
 #
-# This program currentlyll read the PC-FX's BIOS ROM into a 1MB file
+# This program will:
+#   - transfer execution at the stated memory location
 #
 #   Usage: exec <address> [COM port]
 #
 #   Example:
-#     python exec.py 0x10000 COM3
+#     python exec.py 0x8000 COM3
+#
+# Note: Most programs are compiled to be loaded into 0x8000 area
+#       with an entry address of 0x8000
 #
 
 if ((len(sys.argv) != 3) and (len(sys.argv) != 2)):
@@ -25,8 +29,6 @@ ser = serial.Serial()
 ser.baudrate = 115200
 
 # Add override for windows-style COM ports.
-# Usage:
-#   python send.py mandelbrot COM24
 if (len(sys.argv) == 3):
     ser.port = sys.argv[2]
 else:

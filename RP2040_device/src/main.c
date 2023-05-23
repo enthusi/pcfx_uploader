@@ -185,6 +185,7 @@ void __not_in_flash_func(write_type_cmd)(uint32_t fx_command)
 uint32_t start_addr;
 uint32_t num_bytes;
 uint32_t outword;
+uint32_t junk;
 int index = 0;
 int count;
 
@@ -204,6 +205,12 @@ int count;
     put_pixel(LED_MCU_TO_PCFX);
     sleep_ms(10);
 
+    // drain RX FIFO in case it has residual junk
+    //
+    while (!pio_sm_is_rx_fifo_empty(pio, sm1)) {
+       junk = pio_sm_get_blocking(pio, sm1);
+    }
+    
     // note that PC-FX inverts on input, so we need to send all data as 1's complement
     outword = ~fx_command;
     pio_sm_put_blocking(pio, sm1, outword);
@@ -224,6 +231,9 @@ int count;
     }
 
     sleep_ms(10);
+
+    // clear FIFOs in case of junk
+    pio_sm_clear_fifos(pio, sm1);
 }
 
 void __not_in_flash_func(read_type_cmd)(uint32_t fx_command)
@@ -232,6 +242,7 @@ uint32_t start_addr;
 uint32_t num_bytes;
 uint32_t outword;
 uint32_t inword, indata;
+uint32_t junk;
 uint32_t count = 0;
 uint32_t index = 0;
 int i = 0;
@@ -242,6 +253,12 @@ int i = 0;
     put_pixel(LED_PCFX_TO_MCU);
     sleep_ms(10);
 
+    // drain RX FIFO in case it has residual junk
+    //
+    while (!pio_sm_is_rx_fifo_empty(pio, sm1)) {
+       junk = pio_sm_get_blocking(pio, sm1);
+    }
+    
     // ------------
     // send request
     // ------------
@@ -282,16 +299,26 @@ int i = 0;
     }
 
     sleep_ms(10);
+
+    // clear FIFOs in case of junk
+    pio_sm_clear_fifos(pio, sm1);
 }
 
 void __not_in_flash_func(exec_type_cmd)(uint32_t fx_command)
 {
 uint32_t exec_addr;
 uint32_t outword;
+uint32_t junk;
 
     put_pixel(LED_EXEC);
     exec_addr  = uart_get_word();
 
+    // drain RX FIFO in case it has residual junk
+    //
+    while (!pio_sm_is_rx_fifo_empty(pio, sm1)) {
+       junk = pio_sm_get_blocking(pio, sm1);
+    }
+    
     // note that PC-FX inverts on input, so we need to send all data as 1's complement
     outword = ~fx_command;
     pio_sm_put_blocking(pio, sm1, outword);
@@ -300,6 +327,9 @@ uint32_t outword;
     pio_sm_put_blocking(pio, sm1, outword);
 
     sleep_ms(10);
+
+    // clear FIFOs in case of junk
+    pio_sm_clear_fifos(pio, sm1);
 }
 
 void __not_in_flash_func(get_cmd_from_uart)(void)

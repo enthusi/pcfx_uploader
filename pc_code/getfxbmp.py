@@ -28,8 +28,6 @@ ser = serial.Serial()
 ser.baudrate = 115200
 
 # Add override for windows-style COM ports.
-# Usage:
-#   python send.py mandelbrot COM24
 if (len(sys.argv) == 3):
     ser.port = sys.argv[2]
 else:
