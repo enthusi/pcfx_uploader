@@ -353,6 +353,8 @@ cmd_loop:
 #=====================
 exec_command:
     call plot_r_value_letter
+    call longwait
+
     call ReadPad1          # get address
     ldsr    r0,chcw
     movea   0x8001,r0,r1
@@ -379,6 +381,8 @@ exec_command:
 #=====================
 read_command:
     call plot_r_value_letter
+    call longwait
+
     call ReadPad1          # get address
     mov r_keypad, r_ptr
     
@@ -398,6 +402,8 @@ read_command:
 #=====================
 readbram_command:
     call plot_r_value_letter
+    call longwait
+
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -422,6 +428,8 @@ readbram_command:
 #=====================
 write_command:
     call plot_r_value_letter
+    call longwait
+
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -442,6 +450,8 @@ write_command:
 #=====================
 writebram_command:
     call plot_r_value_letter
+    call longwait
+
     call ReadPad1          # get address
     mov r_keypad, r_ptr
 
@@ -470,9 +480,8 @@ writebram_command:
 # r_len should hold the length of data to be sent (in bytes)
 send_bram:
     #movw sendword, r_tmpptr
-    call wait
+    call longwait
 
-    call wait
     mov  0, r_tmp        # send dummy value, as first sent data
                          # occasionally has problems
     call send_value_pad1
@@ -505,9 +514,8 @@ sendbrm_done:
 # r_ptr should hold the pointer to the data to be sent
 # r_len should hold the length of data to be sent (in bytes)
 send_block:
-    call wait
+    call longwait
 
-    call wait
     mov  0, r_tmp        # send dummy value, as first sent data
                          # occasionally has problems
     call send_value_pad1
@@ -543,12 +551,13 @@ send_value_pad1:
 # r_len should hold the length of data to be sent (in bytes)
 #
 recv_bram:
+    add -4, sp
+
     cmp r0,r_len
     bz rcvbrm_done
     #movw sendword, r_tmpptr
 
-    call wait
-    add -4, sp
+    call longwait
 
 rcvbrm_loop:
     call wait
@@ -580,7 +589,7 @@ rcvbrm_done:
 recv_block:
     cmp r0,r_len
     bz recv_done
-    call wait
+    call longwait
 
 rcvblk_loop:
     call wait
@@ -619,6 +628,15 @@ wait_for_pad1_ready:
     cmp 8, r_keypad	
     bnz wait_for_pad1_ready
     ret    
+#-----------------------------------
+longwait:
+    #this could be significantly shorter or even omitted but 
+    #but also it doesn't cost much either
+    movw 0x2000, r_tmp
+lwloop:
+    add -1, r_tmp
+    bne wloop
+    ret
 #-----------------------------------
 wait:
     #this could be significantly shorter or even omitted but 
