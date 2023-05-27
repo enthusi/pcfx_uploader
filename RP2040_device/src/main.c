@@ -277,12 +277,23 @@ int i = 0;
     // receive response
     // ----------------
 
+    // Ignore first word returned from PC-FX; for some reason the PC-FX side has
+    // an issue with the first word written after reading data; it occasionally
+    // retains and sends out the lower half-word of the last inbound word.
+    //
+    // So, we send a dummy word to 'flush' the potentially bad data.
+    //
+    junk = pio_sm_get_blocking(pio, sm1);
+
     count = num_bytes/4;
     index = 0;
 
     while(index < count) {
       inword = pio_sm_get_blocking(pio, sm1);
       indata = ~inword;
+
+      if ((index == 0) && (indata & 0x0000ffff) == (num_bytes & 0x0000ffff))
+         gpio_put(PICO_LED2, PICO_LED_ON);
 
       payload_data[index++] = indata;
     }
@@ -408,9 +419,9 @@ int count = 0;
 ////////////////////////
 // Turn off regular LEDs
 //
-    gpio_init(PICO_LED1);
-    gpio_init(PICO_LED2);
-    gpio_init(PICO_LED3);
+    gpio_init(PICO_LED1);  // red   LED
+    gpio_init(PICO_LED2);  // green LED
+    gpio_init(PICO_LED3);  // blue  LED
 
     gpio_set_dir(PICO_LED1, GPIO_OUT);
     gpio_set_dir(PICO_LED2, GPIO_OUT);

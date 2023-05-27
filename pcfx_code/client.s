@@ -471,6 +471,12 @@ writebram_command:
 send_bram:
     #movw sendword, r_tmpptr
     call wait
+
+    call wait
+    mov  0, r_tmp        # send dummy value, as first sent data
+                         # occasionally has problems
+    call send_value_pad1
+
     add -4, sp
 
 send_bramloop:
@@ -500,6 +506,11 @@ sendbrm_done:
 # r_len should hold the length of data to be sent (in bytes)
 send_block:
     call wait
+
+    call wait
+    mov  0, r_tmp        # send dummy value, as first sent data
+                         # occasionally has problems
+    call send_value_pad1
 
 send_blockloop:
     call wait
