@@ -230,6 +230,9 @@ int count;
        pio_sm_put_blocking(pio, sm1, outword);
     }
 
+    // Output acknowledgement "word"
+    putchar_raw((int)0);
+
     sleep_ms(10);
 
     // clear FIFOs in case of junk
