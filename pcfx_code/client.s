@@ -7,16 +7,16 @@
 #===============================
 .equiv r_register, r6    
 .equiv r_value,    r7    
-.equiv r_ptr,    r10
-.equiv r_len,    r11
-.equiv r_tmp,    r14
-.equiv r_tmpptr, r15
-.equiv r_screenx, r16
-.equiv r_screeny, r17
+.equiv r_ptr,      r10
+.equiv r_len,      r11
+.equiv r_tmp,      r14
+.equiv r_tmpptr,   r15
+.equiv r_screenx,  r16
+.equiv r_screeny,  r17
 .equiv r_tmp_loop, r20
 .equiv r_tmp_adr,  r21
 .equiv r_tmp_data, r22
-.equiv r_keypad, r29
+.equiv r_keypad,   r29
 
 
 #===============================
@@ -544,7 +544,18 @@ send_value_pad1:
 
     mov 1, r_keypad	# 1 = send out
     out.h r_keypad, 0x80[r0]
-    call wait_for_pad1_ready
+#    call wait_for_pad1_ready
+
+sendwait:
+    in.h 0x80[r0], r_keypad
+    andi 9, r_keypad, r_keypad
+    cmp 8, r_keypad	
+    bnz sendwait
+
+    call shortwait
+
+    in.h 0x80[r0], r_keypad  # just to clear any residual status
+
     ret    
 #-----------------------------------
 # r_ptr should hold the pointer to where the data is to be sent
@@ -605,43 +616,68 @@ recv_done:
 #-----------------------------------
 #------------------------------------    
 ReadPad1:
-    mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
-	out.h r_keypad, 0x80[r0]
-1:	
-	in.h 0x80[r0], r_keypad
-	andi 9, r_keypad, r_keypad
-	cmp 8, r_keypad	
-	bnz 1b
-	in.w 0xc0[r0], r_keypad
-	ret
-#---------------------------------
-oldReadPad1:
+
     mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
     out.h r_keypad, 0x80[r0]
-    call wait_for_pad1_ready
-    in.w 0xc0[r0], r_keypad
-    ret
-#------------------------------------
-wait_for_pad1_ready:	
+    call pollwait       # ~98 useconds
+
+    mov 8, r_tmp_loop
+1:	
+    add -1, r_tmp_loop
+    bz  ReadPad1
+    call shortwait      # ~10 useconds
     in.h 0x80[r0], r_keypad
-    andi 9, r_keypad, r_keypad
-    cmp 8, r_keypad	
-    bnz wait_for_pad1_ready
-    ret    
-#-----------------------------------
-longwait:
-    #this could be significantly shorter or even omitted but 
-    #but also it doesn't cost much either
-    movw 0x2000, r_tmp
-lwloop:
-    add -1, r_tmp
-    bne wloop
+    andi 8, r_keypad, r_keypad
+    cmp 8, r_keypad
+    bnz 1b
+
+    call shortwait
+    in.h 0x80[r0], r_keypad  # just to clear any residual status
+
+    call shortwait
+#    in.w 0xc0[r0], r_keypad
+
+    in.h 0xc0[r0], r_tmp    #set lower halfword of data
+    andi 0xFFFF, r_tmp, r_tmp
+
+    in.h 0xc2[r0], r_keypad  #set upper halfword of data
+    andi 0xFFFF, r_keypad, r_keypad
+    shl  16, r_keypad
+    or   r_tmp, r_keypad
+
     ret
+#---------------------------------
+#oldReadPad1:
+#    mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
+#    out.h r_keypad, 0x80[r0]
+#    call wait_for_pad1_ready
+#    in.w 0xc0[r0], r_keypad
+#    ret
+#------------------------------------
+#wait_for_pad1_ready:	
+#    in.h 0x80[r0], r_keypad
+#    andi 9, r_keypad, r_keypad
+#    cmp 1, r_keypad	
+#    bz wait_for_pad1_ready
+#
+#    call shortwait
+#    ret    
+#-----------------------------------
+pollwait:
+    movw 0x155, r_tmp
+    br  wloop
+longwait:
+    movw 0x2000, r_tmp
+    br  wloop
+#-----------------------------------
+shortwait:
+    movw 0x23, r_tmp
+    br  wloop
 #-----------------------------------
 wait:
     #this could be significantly shorter or even omitted but 
     #but also it doesn't cost much either
-    movw 0x100, r_tmp
+    movw 0xA0, r_tmp
 wloop:
     add -1, r_tmp
     bne wloop
@@ -649,14 +685,16 @@ wloop:
 #------------------------------------    
 ReadPad0:	
     mov 5, r_keypad	# 5 = Trigger enable + receive enable*/
-	out.h r_keypad, 0x00[r0]
+    out.h r_keypad, 0x00[r0]
 wait_for_pad0_ready:	
-	in.h 0x00[r0], r_keypad
-	andi 9, r_keypad, r_keypad
-	cmp 8, r_keypad	
-	bnz wait_for_pad0_ready
-	in.w 0x40[r0], r_keypad
-	ret
+    in.h 0x00[r0], r_keypad
+    andi 9, r_keypad, r_keypad
+    cmp 1, r_keypad	
+    bz wait_for_pad0_ready
+
+    call shortwait
+    in.w 0x40[r0], r_keypad
+    ret
 
 #------------------------------------
 plot_r_value_letter:
