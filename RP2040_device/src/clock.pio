@@ -33,10 +33,10 @@
 
 .wrap_target
 clklp:
-    wait  0 pin 0        ; Wait for falling edge of LATCH
+    wait  0 pin 0  [4]      ; Wait for falling edge of LATCH
+    jmp   pin, clklp
     wait  1 pin 0        ; Wait for rising edge of LATCH (latch completion)
     irq   7              ; Signal other state machine
-;    in    pins, 1        ; send data via FIFO (data is ignored, but timing is important)
 .wrap
 
 % c-sdk {
@@ -46,6 +46,7 @@ static inline void clock_program_init(PIO pio, uint sm, uint offset, uint inpin)
     // Set the IN base pin to the provided `pin` parameter. This is the data
     // pin, and the next-numbered GPIO is used as the clock pin.
     sm_config_set_in_pins(&c, inpin);
+    sm_config_set_jmp_pin(&c, inpin);
 
     // Set the pin directions to input at the PIO
     pio_sm_set_consecutive_pindirs(pio, sm, inpin, 1, false);
