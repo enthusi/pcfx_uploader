@@ -111,6 +111,8 @@ def writ_data(port, addr, mem):
         #print (port.write(databytes))     # write a string
         port.write(databytes)     # write a string
         port.flush()
+
+    ack = port.read(1)
     return
 
 #
@@ -139,6 +141,8 @@ def wrbr_data(port, addr, mem):
         #print (port.write(databytes))     # write a string
         port.write(databytes)     # write a string
         port.flush()
+
+    ack = port.read(1)
     return
 
 #
